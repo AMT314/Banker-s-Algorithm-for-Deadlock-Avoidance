@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banker's Algo Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .form-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+        input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Banker's Algorithm</h1>
+    <div class="form-container">
+        <label for="resources">Number of Resources:</label>
+        <input type="number" id="resources" min="1">
+
+        <label for="processes">Number of Processes:</label>
+        <input type="number" id="processes" min="1">
+
+        <label for="resourceAvailability">Initial Resource Availability (comma-separated):</label>
+        <input type="text" id="resourceAvailability">
+
+        <label for="allocation">Allocation Matrix (comma-separated elements, semicolon-separated rows):</label>
+        <input type="text" id="allocation">
+
+        <label for="maxNeed">Maximum Need Matrix (comma-separated elements, semicolon-separated rows):</label>
+        <input type="text" id="maxNeed">
+
+        <button onclick="runBankersAlgorithm()">Calculate Safe Sequence</button>
+
+        <label for="reqProcess">Requesting process:</label>
+        <input type="number" id="reqProcess">
+
+        <label for="req">Request (comma-separated elements):</label>
+        <input type="text" id="req">
+
+        <button onclick="runResourceRequestAlgorithm()">Calculate Safe Sequence for given request</button>
+    </div>
+    <div class="result" id="result"></div>
+    <div class="resourceRequestResult" id="resourceRequestResult"></div>
+    <script>
+        function runBankersAlgorithm() {
+            const r = parseInt(document.getElementById('resources').value);
+            const p = parseInt(document.getElementById('processes').value);
+            
+            const available = document.getElementById('resourceAvailability').value.split(',').map(Number);
+            const alloc = document.getElementById('allocation').value.split(';').map(row => row.split(',').map(Number));
+            const maxNeed = document.getElementById('maxNeed').value.split(';').map(row => row.split(',').map(Number));
+
+            console.log("Resources:", r);
+            console.log("Processes:", p);
+            console.log("Available Resources:", available);
+            console.log("Allocation Matrix:", alloc);
+            console.log("Maximum Need Matrix:", maxNeed);
+            
+            if (isNaN(r) || isNaN(p) || !available.length || !alloc.length || !maxNeed.length) {
+                document.getElementById('result').innerHTML = "Please enter all values correctly.";
+                return;
+            }
+            
+            let need = Array.from({ length: p }, () => Array(r).fill(0));
+            let finish = Array(p).fill(false);
+            let safeSequence = [];
+
+            for (let i = 0; i < p; i++) {
+                for (let j = 0; j < r; j++) {
+                    need[i][j] = maxNeed[i][j] - alloc[i][j];
+                }
+            }
+
+            while (safeSequence.length < p) {
+                let found = false;
+                for (let i = 0; i < p; i++) {
+                    if (!finish[i]) {
+                        let canAllocate = true;
+                        for (let j = 0; j < r; j++) {
+                            if (need[i][j] > available[j]) {
+                                canAllocate = false;
+                                break;
+                            }
+                        }
+                        if (canAllocate) {
+                            for (let j = 0; j < r; j++) {
+                                available[j] += alloc[i][j];
+                            }
+                            finish[i] = true;
+                            safeSequence.push(i);
+                            found = true;
+                        }
+                    }
+                }
+                if (!found) {
+                    document.getElementById('result').innerHTML = "System is not in a safe state.";
+                    return;
+                }
+            }
+
+            document.getElementById('result').innerHTML = "System is in a safe state. Safe sequence is: " +
+                safeSequence.map(i => "P" + i).join(" -> ");
+        }
+
+        function runResourceRequestAlgorithm() {
+            const r = parseInt(document.getElementById('resources').value);
+            const p = parseInt(document.getElementById('processes').value);
+            const reqP = parseInt(document.getElementById('reqProcess').value);
+            const req = document.getElementById('req').value.split(',').map(Number);
+            const available = document.getElementById('resourceAvailability').value.split(',').map(Number);
+            const alloc = document.getElementById('allocation').value.split(';').map(row => row.split(',').map(Number));
+            const maxNeed = document.getElementById('maxNeed').value.split(';').map(row => row.split(',').map(Number));
+
+            for (let i = 0; i < r; i++) {
+                available[i] = available[i] - req[i];
+            }
+
+            for (let i = 0; i < r; i++) {
+                alloc[reqP][i] = alloc[reqP][i] + req[i];
+            }
+
+            console.log("Resources:", r);
+            console.log("Processes:", p);
+            console.log("Available Resources:", available);
+            console.log("Allocation Matrix:", alloc);
+            console.log("Maximum Need Matrix:", maxNeed);
+
+            if (isNaN(r) || isNaN(p) || isNaN(reqP) || !available.length || !alloc.length || !maxNeed.length || !req.length) {
+                document.getElementById('resourceRequestResult').innerHTML = "Please enter all values correctly.";
+                return;
+            }
+
+            let need = Array.from({ length: p }, () => Array(r).fill(0));
+            let finish = Array(p).fill(false);
+            let safeSequence = [];
+
+            for (let i = 0; i < p; i++) {
+                for (let j = 0; j < r; j++) {
+                    need[i][j] = maxNeed[i][j] - alloc[i][j];
+                }
+            }
+        
+            while (safeSequence.length < p) {
+                let found = false;
+                for (let i = 0; i < p; i++) {
+                    if (!finish[i]) {
+                        let canAllocate = true;
+                        for (let j = 0; j < r; j++) {
+                            if (need[i][j] > available[j]) {
+                                canAllocate = false;
+                                break;
+                            }
+                        }
+                        if (canAllocate) {
+                            for (let j = 0; j < r; j++) {
+                                available[j] += alloc[i][j];
+                            }
+                            finish[i] = true;
+                            safeSequence.push(i);
+                            found = true;
+                        }
+                    }
+                }
+                if (!found) {
+                    document.getElementById('resourceRequestResult').innerHTML = "System is not in a safe state.";
+                    return;
+                }
+            }
+
+            document.getElementById('resourceRequestResult').innerHTML = "Request can be granted. New safe sequence is: " +
+                safeSequence.map(i => "P" + i).join(" -> ");
+        }
+    </script>
+</body>
+</html>
